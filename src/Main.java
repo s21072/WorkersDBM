@@ -8,9 +8,9 @@ public class Main {
 
         //Person person = new Person();
         try {
-            //person = new Person("aasd","asd","asd","asd@aasd.as","98082804935");
-            //personController.create("aasd","qweqwe","asd","3asd@aasd.as","98082804935", false);
-            /*List<Person> testList = personController.find(null,"aasd","asd",null,null,null);
+            //person = new Person("aasd","asd","asd","asd@aasd.as","xxxxxxx");
+            //personController.create("aasd","qweqwe","asd","3asd@aasd.as","xxxxxxx", false);
+            /*List<Person> testList = personController.find(null,"zxc",null,null,null,null);
 
             for (Person person : testList){
                 System.out.println(person.toString());

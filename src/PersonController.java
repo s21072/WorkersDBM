@@ -22,10 +22,13 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class PersonController {
     static final String EXTERNAL_DIR = "External";
     static final String INTERNAL_DIR = "Internal";
+    static final Pattern PESEL_PATTERN = Pattern.compile("\\d{4}[0-3]\\d{6}");
+    static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
 
     //Znalezienie pracownika po dowolnym argumencie
     public List<Person> find(String personID, String firstName, String lastName, String mobile, String email, String pesel){
@@ -37,7 +40,7 @@ public class PersonController {
         files.addAll(listFile(EXTERNAL_DIR));
         files.addAll(listFile(INTERNAL_DIR));
 
-        //Sprawdzamy ile pól ma wartość
+        //Sprawdzamy ile pól ma wartość, żeby później móc odfiltrować pliki które spełniają mniej wartości wyszukiwanych niż chcemy
         int controlNumber = 0;
         if (personID != null) controlNumber++;
         if (firstName != null) controlNumber++;
@@ -59,43 +62,41 @@ public class PersonController {
                 Document document = documentBuilder.parse(file);
                 document.getDocumentElement().normalize();
 
-                //Łapiemy atrybuty node'a <person>
-                NodeList nodeList = document.getElementsByTagName("person");
-                for (int temp  = 0; temp  < nodeList.getLength(); temp ++){
-                    Node node = nodeList.item(temp);
-                    if(node.getNodeType() == Node.ELEMENT_NODE){
-                        Element element = (Element) node;
-                        //sprawdzamy czy osoba z pliku spełnia wymagania
+                //Łapiemy atrybuty node'a <person>, jako, że 1 pracownik to 1 plik zawsze będzie 1 node
+                Node node = document.getElementsByTagName("person").item(0);
 
-                        if (personID != null && element.getElementsByTagName("personID").item(0).getTextContent().equals(personID)){
-                            controlNumber--;
-                        }
-                        if (firstName != null && element.getElementsByTagName("firstName").item(0).getTextContent().equals(firstName)) {
-                            controlNumber--;
-                        }
-                        if (lastName != null && element.getElementsByTagName("lastName").item(0).getTextContent().equals(lastName)) {
-                            controlNumber--;
-                        }
-                        if (mobile != null && element.getElementsByTagName("mobile").item(0).getTextContent().equals(mobile)) {
-                            controlNumber--;
-                        }
-                        if (email != null && element.getElementsByTagName("email").item(0).getTextContent().equals(email)) {
-                            controlNumber--;
-                        }
-                        if (pesel != null && element.getElementsByTagName("pesel").item(0).getTextContent().equals(pesel)) {
-                            controlNumber--;
-                        }
+                if(node.getNodeType() == Node.ELEMENT_NODE){
+                    Element element = (Element) node;
+                    //sprawdzamy czy osoba z pliku spełnia wymagania
 
-                        if (controlNumber == 0){
-                            people.add(new Person(
-                                    element.getElementsByTagName("personID").item(0).getTextContent(),
-                                    element.getElementsByTagName("firstName").item(0).getTextContent(),
-                                    element.getElementsByTagName("lastName").item(0).getTextContent(),
-                                    element.getElementsByTagName("mobile").item(0).getTextContent(),
-                                    element.getElementsByTagName("email").item(0).getTextContent(),
-                                    element.getElementsByTagName("pesel").item(0).getTextContent()
-                            ));
-                        }
+                    if (personID != null && element.getElementsByTagName("personID").item(0).getTextContent().equals(personID)){
+                        controlNumber--;
+                    }
+                    if (firstName != null && element.getElementsByTagName("firstName").item(0).getTextContent().equals(firstName)) {
+                        controlNumber--;
+                    }
+                    if (lastName != null && element.getElementsByTagName("lastName").item(0).getTextContent().equals(lastName)) {
+                        controlNumber--;
+                    }
+                    if (mobile != null && element.getElementsByTagName("mobile").item(0).getTextContent().equals(mobile)) {
+                        controlNumber--;
+                    }
+                    if (email != null && element.getElementsByTagName("email").item(0).getTextContent().equals(email)) {
+                        controlNumber--;
+                    }
+                    if (pesel != null && element.getElementsByTagName("pesel").item(0).getTextContent().equals(pesel)) {
+                        controlNumber--;
+                    }
+
+                    if (controlNumber == 0){
+                        people.add(new Person(
+                                element.getElementsByTagName("personID").item(0).getTextContent(),
+                                element.getElementsByTagName("firstName").item(0).getTextContent(),
+                                element.getElementsByTagName("lastName").item(0).getTextContent(),
+                                element.getElementsByTagName("mobile").item(0).getTextContent(),
+                                element.getElementsByTagName("email").item(0).getTextContent(),
+                                element.getElementsByTagName("pesel").item(0).getTextContent()
+                        ));
                     }
                 }
             }catch (Exception e) {e.printStackTrace();}
@@ -169,6 +170,12 @@ public class PersonController {
                        String modifyFirstName, String modifyLastName, String modifyMobile, String modifyEmail, String modifyPesel){
         //Połączenie metody find() i create()
 
+        if(modifyEmail != null && !EMAIL_PATTERN.matcher(modifyEmail).matches()){
+            throw new IllegalArgumentException(email + " is wrong. Please check formating.");
+        }
+        if(modifyPesel != null && !PESEL_PATTERN.matcher(modifyPesel).matches()){
+            throw new IllegalArgumentException(pesel + " is wrong. Please check formating.");
+        }
         //Szukamy po dowolnym argumencie, musimy sprawdzić wszystkie pliki
         List<File> files = new ArrayList<>();
         files.addAll(listFile(EXTERNAL_DIR));
@@ -182,6 +189,7 @@ public class PersonController {
         if (mobile != null) controlNumber++;
         if (email != null) controlNumber++;
         if (pesel != null) controlNumber++;
+
         int sumControl = controlNumber;
 
         //przeglądamy każdy z plików
@@ -196,48 +204,46 @@ public class PersonController {
                 Document document = documentBuilder.parse(file);
                 document.getDocumentElement().normalize();
 
-                //Łapiemy atrybuty node'a <person>
-                NodeList nodeList = document.getElementsByTagName("person");
-                for (int temp  = 0; temp  < nodeList.getLength(); temp ++){
-                    Node node = nodeList.item(temp);
-                    if(node.getNodeType() == Node.ELEMENT_NODE){
-                        Element element = (Element) node;
-                        //sprawdzamy czy osoba z pliku spełnia wymagania
+                //Łapiemy atrybuty node'a <person>, jako, że 1 pracownik to 1 plik zawsze będzie 1 node
+                Node node = document.getElementsByTagName("person").item(0);
 
-                        if (personID != null && element.getElementsByTagName("personID").item(0).getTextContent().equals(personID)){
-                            controlNumber--;
-                        }
-                        if (firstName != null && element.getElementsByTagName("firstName").item(0).getTextContent().equals(firstName)) {
-                            controlNumber--;
-                        }
-                        if (lastName != null && element.getElementsByTagName("lastName").item(0).getTextContent().equals(lastName)) {
-                            controlNumber--;
-                        }
-                        if (mobile != null && element.getElementsByTagName("mobile").item(0).getTextContent().equals(mobile)) {
-                            controlNumber--;
-                        }
-                        if (email != null && element.getElementsByTagName("email").item(0).getTextContent().equals(email)) {
-                            controlNumber--;
-                        }
-                        if (pesel != null && element.getElementsByTagName("pesel").item(0).getTextContent().equals(pesel)) {
-                            controlNumber--;
-                        }
+                if(node.getNodeType() == Node.ELEMENT_NODE){
+                    Element element = (Element) node;
+                    //sprawdzamy czy osoba z pliku spełnia wymagania
 
-                        if (controlNumber == 0){
-                            if (modifyFirstName != null) element.getElementsByTagName("firstName").item(0).setTextContent(modifyFirstName);
-                            if (modifyLastName != null) element.getElementsByTagName("lastName").item(0).setTextContent(modifyLastName);
-                            if (modifyMobile != null) element.getElementsByTagName("mobile").item(0).setTextContent(modifyMobile);
-                            if (modifyEmail != null) element.getElementsByTagName("email").item(0).setTextContent(modifyEmail);
-                            if (modifyPesel != null) element.getElementsByTagName("pesel").item(0).setTextContent(modifyPesel);
+                    if (personID != null && element.getElementsByTagName("personID").item(0).getTextContent().equals(personID)){
+                        controlNumber--;
+                    }
+                    if (firstName != null && element.getElementsByTagName("firstName").item(0).getTextContent().equals(firstName)) {
+                        controlNumber--;
+                    }
+                    if (lastName != null && element.getElementsByTagName("lastName").item(0).getTextContent().equals(lastName)) {
+                        controlNumber--;
+                    }
+                    if (mobile != null && element.getElementsByTagName("mobile").item(0).getTextContent().equals(mobile)) {
+                        controlNumber--;
+                    }
+                    if (email != null && element.getElementsByTagName("email").item(0).getTextContent().equals(email)) {
+                        controlNumber--;
+                    }
+                    if (pesel != null && element.getElementsByTagName("pesel").item(0).getTextContent().equals(pesel)) {
+                        controlNumber--;
+                    }
 
-                            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                            Transformer transformer = transformerFactory.newTransformer();
-                            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-                            transformer.setOutputProperty(OutputKeys.STANDALONE, "no");
-                            DOMSource domSource = new DOMSource(document);
-                            StreamResult result = new StreamResult(file);
-                            transformer.transform(domSource,result);
-                        }
+                    if (controlNumber == 0){
+                        if (modifyFirstName != null) element.getElementsByTagName("firstName").item(0).setTextContent(modifyFirstName);
+                        if (modifyLastName != null) element.getElementsByTagName("lastName").item(0).setTextContent(modifyLastName);
+                        if (modifyMobile != null) element.getElementsByTagName("mobile").item(0).setTextContent(modifyMobile);
+                        if (modifyEmail != null) element.getElementsByTagName("email").item(0).setTextContent(modifyEmail);
+                        if (modifyPesel != null) element.getElementsByTagName("pesel").item(0).setTextContent(modifyPesel);
+
+                        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                        Transformer transformer = transformerFactory.newTransformer();
+                        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+                        transformer.setOutputProperty(OutputKeys.STANDALONE, "no");
+                        DOMSource domSource = new DOMSource(document);
+                        StreamResult result = new StreamResult(file);
+                        transformer.transform(domSource,result);
                     }
                 }
             }catch (Exception e) {e.printStackTrace();}
@@ -261,7 +267,7 @@ public class PersonController {
         return xmlFiles;
     }
     //================================================================
-    //============Plik xml z lokalizacji==================
+    //============Plik xml z lokalizacji z danym ID==================
     File findFile(String dir, String personID){
         File[] allFiles = new File(dir).listFiles();
         File returnFile = null;
